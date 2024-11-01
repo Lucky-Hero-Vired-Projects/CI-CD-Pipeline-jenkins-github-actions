@@ -61,3 +61,5 @@ pip install -r requirements.txt
 ### Localhost
 ```python -m flask run```
 ```http://127.0.0.1:5000```
+### For Using LoadBalancer and DNS
+```lucky1225.blog/falsk```

@@ -7,10 +7,10 @@ metadata:
     nginx.ingress.kubernetes.io/ssl-redirect: "false"  
 spec:
   rules:
-  - host: python-app.local  
+  - host: lucky1225.blog  
     http:
       paths:
-      - path: /
+      - path: /flask
         pathType: Prefix
         backend:
           service:
