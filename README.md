@@ -24,6 +24,8 @@ To run this pipeline, ensure you have the following:
 - **Git** installed for repository management.
 - **Flask** installed as the application framework.
 - A configured **Jenkins Job** with access to this repository.
+- **An EKS Cluster** to Deploy the Application.
+- **Domain** to To access the Loadbalancer endpoint securily.
 
 ## Pipeline Workflow
 The pipeline consists of the following stages:
@@ -32,18 +34,6 @@ The pipeline consists of the following stages:
 3. **Run Tests** - Executes unit tests to validate application integrity.
 4. **Build and Deploy** - Deploys the Flask application on a target environment.
 
-## Project Structure
-```plaintext
-Jenkins-CI-CD-pipeline-for-flask-application/
-├── app/
-│   ├── __init__.py             # Initializes the Flask app
-│   ├── main.py                 # Main application file
-│   └── tests/
-│       ├── test_app.py         # Unit tests
-├── requirements.txt            # Python dependencies
-├── Jenkinsfile                 # Jenkins pipeline configuration
-└── README.md                   # Project documentation
-```
 ## Install Dependencies
 pip install -r requirements.txt
 
