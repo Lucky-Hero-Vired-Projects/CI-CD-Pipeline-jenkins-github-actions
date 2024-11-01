@@ -43,17 +43,9 @@ Jenkins-CI-CD-pipeline-for-flask-application/
 ├── requirements.txt            # Python dependencies
 ├── Jenkinsfile                 # Jenkins pipeline configuration
 └── README.md                   # Project documentation
-
+```
 ## Install Dependencies
 pip install -r requirements.txt
-
-##Setup Guide
-
-## Configure Jenkins Pipeline
-Open Jenkins and create a new Pipeline project.
-In the project configuration, point to the repository URL.
-Specify the Jenkinsfile in the repository for pipeline configuration.
-
 
 
 ### Coming Features:
