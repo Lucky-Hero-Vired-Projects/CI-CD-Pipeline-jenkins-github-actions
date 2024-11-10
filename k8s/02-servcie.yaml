@@ -4,6 +4,7 @@ metadata:
   name: python-app-service
   labels:
     app: python-app
+  namespace: app
 spec:
   selector:
     app: python-app
