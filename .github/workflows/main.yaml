@@ -83,9 +83,3 @@ jobs:
         run: |
           kubectl set image -f $K8S_MANIFEST_PATH/deployment.yaml python-container=$DOCKER_IMAGE_TAG --record
           kubectl apply -f $K8S_MANIFEST_PATH
-
-    post:
-      success:
-        run: echo "Deployment successful!"
-      failure:
-        run: echo "Deployment failed."
