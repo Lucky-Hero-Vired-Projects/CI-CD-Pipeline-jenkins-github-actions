@@ -1,118 +1,91 @@
-name: CI/CD for hosting a Flask-based Python Web Application
+name: CI/CD Pipeline
 
 on:
   push:
     branches:
-      - dev    # Trigger staging deployment on dev branch push
-      - main   # Trigger production deployment on main branch push
-  release:
-    types: [published]  # Trigger production deployment on release
+      - main
+
+env:
+  REPO_URL: 'https://github.com/Lucky-Hero-Vired-Projects/CI-CD-Pipeline-jenkins-github-actions.git'
+  ECR_REPO: '975050024946.dkr.ecr.us-west-2.amazonaws.com/lucky-repos'
+  K8S_MANIFEST_PATH: 'k8s'
+  CLUSTER_NAME: 'lucky-eks-cluster'
 
 jobs:
-  # Step 1: Install dependencies, run tests, and build on the GitHub Runner (not on EC2)
-  test-and-build:
+  deploy:
     runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v4
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Install AWS CLI
+        run: |
+          curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+          unzip awscliv2.zip
+          sudo ./aws/install
+          aws --version
+
+      - name: Install kubectl
+        run: |
+          curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+          chmod +x kubectl
+          sudo mv kubectl /usr/local/bin/
+          kubectl version --client
+
+      - name: Install Docker
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            apt-transport-https \
+            ca-certificates \
+            curl \
+            software-properties-common
+          curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
+          echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+          sudo apt-get update
+          sudo apt-get install -y docker-ce
+          sudo systemctl start docker
+          sudo systemctl enable docker
+          docker --version
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v1
         with:
-          python-version: '3.x'
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
 
-      - name: Install dependencies globally
+      - name: Configure Kubernetes Context
         run: |
-          python -m pip install --upgrade pip
-          pip install --user -r requirements.txt  # Install dependencies globally on the GitHub runner
+          aws eks update-kubeconfig --name ${{ env.CLUSTER_NAME }} --region ${{ secrets.AWS_REGION }}
 
-      - name: Run unit tests
+      - name: Log in to Amazon ECR
         run: |
-          pytest
+          aws ecr get-login-password --region ${{ secrets.AWS_REGION }} | docker login --username AWS --password-stdin ${{ env.ECR_REPO }}
+
+      - name: Build Docker Image
         env:
-          CI: true
-
-      - name: Build the application
+          DOCKER_IMAGE_TAG: "${{ env.ECR_REPO }}:${{ github.run_id }}"
         run: |
-          echo "Building the application"
+          docker build -t $DOCKER_IMAGE_TAG .
 
-  # Step 2: Deploy to Staging (for dev branch)
-  deploy-to-staging:
-    if: github.ref == 'refs/heads/dev'  # Deploy only if it's a push to the dev branch
-    runs-on: ubuntu-latest
-    needs: test-and-build
-    steps:
-      - name: Deploy to Staging EC2 Instance
-        run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.STAGING_EC2_SSH_KEY }}" > ~/.ssh/id_rsa
-          chmod 600 ~/.ssh/id_rsa
-          ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa ${{ secrets.STAGING_EC2_USERNAME }}@${{ secrets.STAGING_EC2_HOST }} << 'EOF'
-            set -e
-            echo "Starting deployment to STAGING..."
-            
-            # Remove the directory if it exists
-            if [ -d "/home/${{ secrets.STAGING_EC2_USERNAME }}/SimpleFlaskApp" ]; then
-              rm -rf /home/${{ secrets.STAGING_EC2_USERNAME }}/SimpleFlaskApp
-            fi
-            
-            # Clone the repository
-            git clone https://github.com/AkankshaJairath/GitHub-Actions-CI-CD-Pipeline-Flask-App.git /home/${{ secrets.STAGING_EC2_USERNAME }}/SimpleFlaskApp
-            cd /home/${{ secrets.STAGING_EC2_USERNAME }}/SimpleFlaskApp
-            
-            # Update and install dependencies using apt
-            sudo apt-get update
-            sudo apt-get install -y python3-flask
-            sudo apt-get install gunicorn
-            
-
-            # Run Gunicorn in the background using nohup
-            nohup /usr/bin/gunicorn --workers 3 app:app --bind 0.0.0.0:${{ secrets.STAGING_PORT }} > gunicorn.log 2>&1 &
-            
-            echo "Deployment completed, Gunicorn is running in the background"
-          EOF
+      - name: Push Docker Image to ECR
         env:
-          STAGING_EC2_HOST: ${{ secrets.STAGING_EC2_HOST }}
-          STAGING_EC2_SSH_KEY: ${{ secrets.STAGING_EC2_SSH_KEY }}
-          STAGING_EC2_USERNAME: ${{ secrets.STAGING_EC2_USERNAME }}
-          STAGING_PORT: ${{ secrets.STAGING_PORT }}
-
-  # Step 3: Deploy to Production (for main branch or release)
-  deploy-to-production:
-    if: github.ref == 'refs/heads/main' || github.event_name == 'release'  # Deploy to production if it's a push to main or a release
-    runs-on: ubuntu-latest
-    needs: test-and-build
-    steps:
-      - name: Deploy to Production EC2 Instance
+          DOCKER_IMAGE_TAG: "${{ env.ECR_REPO }}:${{ github.run_id }}"
         run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.PRODUCTION_EC2_SSH_KEY }}" > ~/.ssh/id_rsa
-          chmod 600 ~/.ssh/id_rsa
-          ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa ${{ secrets.PRODUCTION_EC2_USERNAME }}@${{ secrets.PRODUCTION_EC2_HOST }} << 'EOF'
-            set -e
-            echo "Starting deployment to PRODUCTION..."
-            
-            # Remove the directory if it exists
-            if [ -d "/home/${{ secrets.PRODUCTION_EC2_USERNAME }}/SimpleFlaskApp" ]; then
-              rm -rf /home/${{ secrets.PRODUCTION_EC2_USERNAME }}/SimpleFlaskApp
-            fi
-            
-            # Clone the repository
-            git clone https://github.com/AkankshaJairath/GitHub-Actions-CI-CD-Pipeline-Flask-App.git /home/${{ secrets.PRODUCTION_EC2_USERNAME }}/SimpleFlaskApp
-            cd /home/${{ secrets.PRODUCTION_EC2_USERNAME }}/SimpleFlaskApp
-            
-            # Update and install dependencies using apt
-            sudo apt-get update
-            sudo apt-get install -y python3-flask
-            sudo apt-get install gunicorn
+          docker push $DOCKER_IMAGE_TAG
 
-            # Run Gunicorn in the background using nohup
-            nohup /usr/bin/gunicorn --workers 3 app:app --bind 0.0.0.0:${{ secrets.PRODUCTION_PORT }} > gunicorn.log 2>&1 &
-            
-            echo "Deployment completed, Gunicorn is running in the background"
-          EOF
+      - name: Deploy to Kubernetes
         env:
-          PRODUCTION_EC2_HOST: ${{ secrets.PRODUCTION_EC2_HOST }}
-          PRODUCTION_EC2_SSH_KEY: ${{ secrets.PRODUCTION_EC2_SSH_KEY }}
-          PRODUCTION_EC2_USERNAME: ${{ secrets.PRODUCTION_EC2_USERNAME }}
-          PRODUCTION_PORT: ${{ secrets.PRODUCTION_PORT }}
+          DOCKER_IMAGE_TAG: "${{ env.ECR_REPO }}:${{ github.run_id }}"
+          K8S_MANIFEST_PATH: "${{ env.K8S_MANIFEST_PATH }}"
+        run: |
+          kubectl set image -f $K8S_MANIFEST_PATH/deployment.yaml python-container=$DOCKER_IMAGE_TAG --record
+          kubectl apply -f $K8S_MANIFEST_PATH
+
+    post:
+      success:
+        run: echo "Deployment successful!"
+      failure:
+        run: echo "Deployment failed."
