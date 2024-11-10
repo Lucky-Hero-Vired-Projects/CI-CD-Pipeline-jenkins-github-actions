@@ -91,7 +91,7 @@ jobs:
 
       - name: Replace Image Tag in Kubernetes Deployment
         run: |
-          sed -i "s|\${IMAGE_TAG}|${{ env.IMAGE_TAG }}|g" $K8S_MANIFEST_PATH/deployment.yaml
+          sed -i "s|\${IMAGE_TAG}|${{ env.IMAGE_TAG }}|g" $K8S_MANIFEST_PATH/03-deployment.yaml
 
       - name: Deploy to Kubernetes
         run: |
