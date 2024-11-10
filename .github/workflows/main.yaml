@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch:
 
 env:
   REPO_URL: 'https://github.com/Lucky-Hero-Vired-Projects/CI-CD-Pipeline-jenkins-github-actions.git'
