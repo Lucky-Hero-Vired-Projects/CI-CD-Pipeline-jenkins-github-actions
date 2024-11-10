@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
       - name: python-container
-        image: <your-docker-image>:latest  
+        image: 975050024946.dkr.ecr.us-west-2.amazonaws.com/lucky-repos:${DOCKER_IMAGE_TAG}
         imagePullPolicy: Always  
         ports:
         - containerPort: 5000  

@@ -91,5 +91,5 @@ jobs:
           DOCKER_IMAGE_TAG: "${{ env.ECR_REPO }}:${{ github.run_id }}"
           K8S_MANIFEST_PATH: "${{ env.K8S_MANIFEST_PATH }}"
         run: |
-          kubectl set image -f $K8S_MANIFEST_PATH/deployment.yaml python-container=$DOCKER_IMAGE_TAG --record
+          kubectl set image -f $K8S_MANIFEST_PATH/deployment.yaml python-container=975050024946.dkr.ecr.us-west-2.amazonaws.com/lucky-repos:${DOCKER_IMAGE_TAG} --record
           kubectl apply -f $K8S_MANIFEST_PATH
