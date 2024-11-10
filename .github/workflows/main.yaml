@@ -10,6 +10,7 @@ env:
   ECR_REPO: '975050024946.dkr.ecr.us-west-2.amazonaws.com/lucky-repos'
   K8S_MANIFEST_PATH: 'k8s'
   CLUSTER_NAME: 'lucky-eks-cluster'
+  AWS_REGION: 'us-west-2'
 
 jobs:
   deploy:
